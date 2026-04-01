@@ -1,0 +1,33 @@
+name: Daily DSA Revision MAIL
+
+on: 
+    schedule:
+       - cron: '30 3 * * *'
+    workflow_dispatch:
+
+jobs:
+    run_agent:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Setup Python
+          uses: actions/setup-python@v5
+          with: 
+            python-version: '3.11'
+        
+        - name: Install dependencies
+          run: |
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+
+        - name: Run DSA agent
+          env: 
+            SECRET_KEY: ${{ secrets.SECRET_KEY }}
+            DATABASE_ID: ${{ secrets.DATABASE_ID }}
+            MAIL_SENDER: ${{ secrets.MAIL_SENDER }}
+            MAIL_RECEIVER: ${{ secrets.MAIL_RECEIVER }}
+            MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          run: python dsa_agent.py
