@@ -2,7 +2,7 @@ name: Daily DSA Revision MAIL
 
 on: 
     schedule:
-       - cron: '30 3 * * *'
+       - cron: '00 2 * * *'
     workflow_dispatch:
 
 jobs:
