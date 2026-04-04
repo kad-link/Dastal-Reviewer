@@ -17,6 +17,7 @@ export default async function handler(req, res) {
           headers: HEADERS,
         });
         const data = await response.json();
+
         
         // Transform Notion's complex JSON into your frontend's flat row structure
         const rows = data.results.map((page) => ({
@@ -56,6 +57,29 @@ export default async function handler(req, res) {
         });
         return res.status(200).json({ success: true });
       }
+
+      // 🟡 UPDATE: Edit a field on an existing row
+case "PATCH": {
+  const { id, field, value } = req.body;
+
+  const fieldMap = {
+    title: { "Problem Title": { title: [{ text: { content: value } }] } },
+    topic: { "Topic": { select: value ? { name: value } : null } },
+    url:   { "URL": { url: value || null } },
+    notes: { "Notes": { rich_text: [{ text: { content: value } }] } },
+  };
+
+  const properties = fieldMap[field];
+  if (!properties) return res.status(400).json({ error: "Unknown field" });
+
+  await fetch(`${NOTION_API}/pages/${id}`, {
+    method: "PATCH",
+    headers: HEADERS,
+    body: JSON.stringify({ properties }),
+  });
+
+  return res.status(200).json({ success: true });
+}
 
       default:
         res.setHeader("Allow", ["GET", "POST", "DELETE"]);

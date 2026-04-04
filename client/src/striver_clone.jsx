@@ -26,9 +26,37 @@ export default function App() {
   const bottomRef = useRef(null);
   const addedRef = useRef(false);
 
-  const addRow = () => {
-    setRows((prev) => [...prev, createRow()]);
+  useEffect(() => {
+    fetch("/api/problems")
+      .then((res) => {
+        if (!res.ok) throw new Error("Network response was not ok");
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.length > 0) {
+          setRows(data); 
+        } else {
+          setRows([]); 
+        }
+      })
+      .catch((error) => console.error("Failed to fetch from Notion:", error));
+  }, []);
+
+  const addRow = async () => {
+    const tempId = Date.now(); 
+    setRows((prev) => [...prev, { id: tempId, title: "", topic: "", url: "", notes: "" }]);
     addedRef.current = true;
+
+    try {
+      const res = await fetch("/api/problems", { method: "POST" });
+      const data = await res.json();
+      
+      if (data.id) {
+        setRows((prev) => prev.map(r => r.id === tempId ? { ...r, id: data.id } : r));
+      }
+    } catch (error) {
+      console.error("Failed to add row to Notion", error);
+    }
   };
 
   useEffect(() => {
@@ -38,16 +66,40 @@ export default function App() {
     }
   }, [rows]);
 
-  const updateRow = (id, field, value) => {
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-    );
-  };
+ const updateRow = async (id, field, value) => {
+  setRows((prev) =>
+    prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+  );
 
-  const deleteRow = (id) => {
+  if (typeof id === "string") {
+    try {
+      await fetch("/api/problems", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, field, value }),
+      });
+    } catch (error) {
+      console.error("Failed to update Notion", error);
+    }
+  }
+};
+
+  const deleteRow = async (id) => {
     setRows((prev) => prev.filter((r) => r.id !== id));
     setFlash("Row deleted.");
     setTimeout(() => setFlash(null), 1800);
+
+    if (typeof id === "string") {
+      try {
+        await fetch("/api/problems", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+      } catch (error) {
+        console.error("Failed to delete from Notion", error);
+      }
+    }
   };
 
   const filtered = rows.filter((r) => {
