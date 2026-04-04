@@ -36,12 +36,62 @@ def fetch_ten_problems():
             if title_property:
                 title = title_property[0]["plain_text"]
                 print(title)
-                selected_problems.append(title)
+                page_id = pb["id"]
+                notes_property = pb["properties"].get("Notes", {})
+                notes_content = notes_property.get("rich_text", [])
+                try:
+                    count = int(notes_content[0]["plain_text"]) if notes_content else 0
+                except (ValueError, IndexError):
+                    count = 0
+
+                selected_problems.append({
+                "title": title,
+                "page_id": page_id,
+                "count": count
+            })
 
         return selected_problems
             
     except Exception as e:
         print(f"Server problem : {e}")
+
+def pick_problems(all_problems: list, n: int = 3) -> list:
+    min_count = min(p["count"] for p in all_problems)
+    eligible = [p for p in all_problems if p["count"] == min_count]
+    random.shuffle(eligible)
+
+    if len(eligible) < n:
+        rest = sorted(
+            [p for p in all_problems if p["count"] > min_count],
+            key=lambda x: x["count"]
+        )
+        eligible += rest
+
+    return eligible[:n]
+
+
+def update_notion_counts(chosen: list):
+    print("Updating Notion counts...")
+    for problem in chosen:
+        new_count = problem["count"] + 1
+        try:
+            notion.pages.update(
+                page_id=problem["page_id"],
+                properties={
+                    "Notes": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {"content": str(new_count)}
+                            }
+                        ]
+                    }
+                }
+            )
+            print(f"  Updated '{problem['title']}': {problem['count']} → {new_count}")
+        except Exception as e:
+            print(f"  Failed to update '{problem['title']}': {e}")
+
 
 def send_mail(problems):
     print(f"Mailing myself...")
@@ -51,7 +101,7 @@ def send_mail(problems):
     msg['From'] = EMAIL_SENDER
     msg['To'] = EMAIL_RECEIVER
 
-    final_problems = "\n".join([f"- {pb}" for pb in problems])
+    final_problems = "\n".join([f"- {pb['title']}" for pb in problems])
 
     body = f"""Hi. The following are the questions for today:\n\n{final_problems}\n\nEnjoy."""
     msg.set_content(body)
@@ -71,8 +121,14 @@ def main():
         print("No problems found to review.")
         return
 
-    todays_ten = random.sample(problems, 3)
-    send_mail(todays_ten)
+    
+
+    todays_problems = pick_problems(problems, n=4)
+    print("Today's problems:")
+    for p in todays_problems:
+        print(f"  - {p['title']} (sent {p['count']} times before)")
+    update_notion_counts(todays_problems)
+    send_mail(todays_problems)
 
 
 if __name__ == "__main__":

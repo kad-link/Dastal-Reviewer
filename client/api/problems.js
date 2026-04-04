@@ -1,11 +1,11 @@
 
 const NOTION_API = "https://api.notion.com/v1";
 const HEADERS = {
-  "Authorization": `Bearer ${process.env.NOTION_SECRET_KEY}`,
+  "Authorization": `Bearer ${process.env.SECRET_KEY}`,
   "Notion-Version": "2022-06-28",
   "Content-Type": "application/json",
 };
-const DB_ID = process.env.NOTION_DATABASE_ID;
+const DB_ID = process.env.DATABASE_ID;
 
 export default async function handler(req, res) {
   try {
